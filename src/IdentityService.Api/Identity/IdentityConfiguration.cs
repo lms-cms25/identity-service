@@ -1,5 +1,6 @@
 ﻿using IdentityService.Api.Data;
 using IdentityService.Api.Security;
+using IdentityService.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -48,7 +49,9 @@ public static class IdentityConfiguration
                 };
             });
         services.AddAuthorization();
-
+        services.AddScoped<JwtTokenService>();
+        services.AddScoped<RefreshTokenService>();
+        services.AddScoped<RefreshTokenHasher>();
 
         return services;
     }
