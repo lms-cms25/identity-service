@@ -9,7 +9,7 @@ namespace IdentityService.Api.Endpoints;
 
 public static class AuthenticationEndpoints
 {
-    public static void MaoAuthenticationEndpoints(this WebApplication app)
+    public static void MapAuthenticationEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/auth");
 
