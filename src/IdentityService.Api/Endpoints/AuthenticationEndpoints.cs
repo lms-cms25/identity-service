@@ -12,9 +12,7 @@ public static class AuthenticationEndpoints
     public static void MapAuthenticationEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/auth");
-
-        group.MapPost("/register", Register);
-        //.RequiredAuthorization(policy => policy.RequireRole("Admin"));
+ 
         group.MapPost("/login", Login);
         group.MapPost("/refresh", Refresh);
         group.MapPost("/logout", Logout);
@@ -25,24 +23,6 @@ public static class AuthenticationEndpoints
 
 
 
-
-    private static async Task<IResult> Register(RegisterAuthRequest request, UserManager<AppUser> userManager)
-    {
-        var email = request.Email.Trim().ToLowerInvariant();
-
-        var user = new AppUser
-        {
-            UserName = email,
-            Email = email,
-        };
-
-        var result = await userManager.CreateAsync(user, request.Password);
-
-        if (!result.Succeeded)
-            return Results.ValidationProblem(result.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
-
-        return Results.Created($"/api/users/{user.Id}", new { user.Id, user.Email });
-    }
 
 
 
