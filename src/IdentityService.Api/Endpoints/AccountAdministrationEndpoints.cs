@@ -1,6 +1,9 @@
-﻿using IdentityService.Api.Dto;
+﻿using IdentityService.Api.Data;
+using IdentityService.Api.Dto;
 using IdentityService.Api.Identity;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace IdentityService.Api.Endpoints;
 
@@ -11,6 +14,7 @@ public static class AccountAdministrationEndpoints
         var group = app.MapGroup("/api/admin");
 
         group.MapPost("/register", Register);
+        group.MapGet("/all-users", GetAllUsersWithRoles);
     }
 
     private static async Task<IResult> Register(RegisterAuthRequest request, UserManager<AppUser> userManager, RoleManager<IdentityRole> roleManager)
@@ -40,5 +44,25 @@ public static class AccountAdministrationEndpoints
             return Results.ValidationProblem(roleResult.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
 
         return Results.Created();
+    }
+
+   
+    private static async Task<IResult> GetAllUsersWithRoles(
+        UserManager<AppUser> userManager,
+        [FromServices] DataContext db) 
+    {
+        var usersWithRoles = await (from user in db.Users
+                                    select new
+                                    {
+                                        user.Id,
+                                        user.UserName,
+                                        user.Email,
+                                        Roles = (from userRole in db.UserRoles
+                                                 join role in db.Roles on userRole.RoleId equals role.Id
+                                                 where userRole.UserId == user.Id
+                                                 select role.Name).ToList()
+                                    }).ToListAsync();
+
+        return Results.Ok(usersWithRoles);
     }
 }
