@@ -3,6 +3,8 @@ using IdentityService.Api.Endpoints;
 using IdentityService.Api.Identity;
 using IdentityService.Api.Security;
 using Scalar.AspNetCore;
+using System.Security.Claims;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +40,11 @@ app.UseAuthorization();
 
 app.MapAuthenticationEndpoints();
 app.MapAccountAdministrationEndpoints();
+
+//app.MapGet("/api/test-auth", (ClaimsPrincipal user) =>
+//{
+//    return Results.Ok(user.Claims.Select(c => new { c.Type, c.Value }));
+//}).RequireAuthorization();
 
 app.Run();
 

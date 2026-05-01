@@ -11,7 +11,7 @@ public static class AccountAdministrationEndpoints
 {
     public static void MapAccountAdministrationEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/admin");
+        var group = app.MapGroup("/api/admin").RequireAuthorization("AdminOnly");
 
         group.MapPost("/register", Register);
         group.MapGet("/all-users", GetAllUsersWithRoles);
@@ -21,16 +21,22 @@ public static class AccountAdministrationEndpoints
     {
         var email = request.Email.Trim().ToLowerInvariant();
 
+        if (string.IsNullOrWhiteSpace(request.RoleName))
+        {
+            return Results.BadRequest("Role name cannot be empty.");
+        }
+
         var user = new AppUser
         {
             UserName = email,
             Email = email,
         };
+        string normalizedRole = char.ToUpper(request.RoleName[0]) + request.RoleName.Substring(1).ToLower();
 
-        var role = await roleManager.FindByNameAsync(request.RoleName);
+        var role = await roleManager.FindByNameAsync(normalizedRole);
         if(role is null)
         {
-            IdentityRole newRole = new(request.RoleName);
+            IdentityRole newRole = new(normalizedRole);
             await roleManager.CreateAsync(newRole);
         }
 
@@ -39,7 +45,8 @@ public static class AccountAdministrationEndpoints
         if (!result.Succeeded)
             return Results.ValidationProblem(result.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
 
-        var roleResult = await userManager.AddToRoleAsync(user, request.RoleName);
+
+        var roleResult = await userManager.AddToRoleAsync(user, normalizedRole);
         if (!roleResult.Succeeded)
             return Results.ValidationProblem(roleResult.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
 
