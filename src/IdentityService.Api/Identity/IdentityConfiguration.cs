@@ -48,7 +48,13 @@ public static class IdentityConfiguration
                     RoleClaimType = JwtClaimTypes.Role
                 };
             });
-        services.AddAuthorization();
+        //services.AddAuthorization();
+
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AdminOnly", policy =>
+                policy.RequireRole("Admin")); 
+        });
         services.AddScoped<JwtTokenService>();
         services.AddScoped<RefreshTokenService>();
         services.AddScoped<RefreshTokenHasher>();
