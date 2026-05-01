@@ -11,7 +11,7 @@ public static class AccountAdministrationEndpoints
 {
     public static void MapAccountAdministrationEndpoints(this WebApplication app)
     {
-        var group = app.MapGroup("/api/admin");
+        var group = app.MapGroup("/api/admin").RequireAuthorization("AdminOnly"); ;
 
         group.MapPost("/register", Register);
         group.MapGet("/all-users", GetAllUsersWithRoles);
