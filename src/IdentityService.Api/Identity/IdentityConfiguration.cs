@@ -13,7 +13,8 @@ public static class IdentityConfiguration
     {
         services.AddOptions<JwtOptions>().Bind(configuration.GetSection(JwtOptions.SectionName));
 
-        var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? throw new InvalidOperationException("JWT Configuration is missing");
+        var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
+            ?? throw new InvalidOperationException("JWT Configuration is missing");
 
         services.AddIdentityCore<AppUser>(options =>
         {
@@ -23,32 +24,39 @@ public static class IdentityConfiguration
             options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(1);
             options.Lockout.AllowedForNewUsers = true;
         })
-            .AddRoles<IdentityRole>()
-            .AddEntityFrameworkStores<DataContext>()
-            .AddDefaultTokenProviders();
+        .AddRoles<IdentityRole>()
+        .AddEntityFrameworkStores<DataContext>()
+        .AddDefaultTokenProviders();
 
-        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
             {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidIssuer = jwtOptions.Issuer,
+                ValidateIssuer = true,
+                ValidIssuer = jwtOptions.Issuer,
+                ValidateAudience = true,
+                ValidAudience = jwtOptions.Audience,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = jwtOptions.GetSigningKey(),
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.FromSeconds(30),
 
-                    ValidateAudience = true,
-                    ValidAudience = jwtOptions.Audience,
+                NameClaimType = JwtClaimTypes.Email,
+                RoleClaimType = JwtClaimTypes.Role 
+            };
+        });
 
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = jwtOptions.GetSigningKey(),
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+        });
 
-                    ValidateLifetime = true,
-                    ClockSkew = TimeSpan.FromSeconds(30),
-
-                    NameClaimType = JwtClaimTypes.Email,
-                    RoleClaimType = JwtClaimTypes.Role
-                };
-            });
-        services.AddAuthorization();
         services.AddScoped<JwtTokenService>();
         services.AddScoped<RefreshTokenService>();
         services.AddScoped<RefreshTokenHasher>();
