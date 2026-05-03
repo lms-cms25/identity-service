@@ -6,7 +6,7 @@ using IdentityService.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 
-namespace IdentityService.Api.Endpoints;
+    namespace IdentityService.Api.Endpoints;
 
 public static class AuthenticationEndpoints
 {
@@ -56,123 +56,123 @@ public static class AuthenticationEndpoints
 
 
 
-    //kan ha sin egna authorization service: UserManager<AppUser> userManager, JwtTokenService jwtTokenService, RefreshTokenService refreshTokenService, HttpContext httpContext, CancellationToken ct = default
+        //kan ha sin egna authorization service: UserManager<AppUser> userManager, JwtTokenService jwtTokenService, RefreshTokenService refreshTokenService, HttpContext httpContext, CancellationToken ct = default
 
 
 
 
-    private static async Task<IResult> Login(LoginAuthRequest request, UserManager<AppUser> userManager, JwtTokenService jwtTokenService, RefreshTokenService refreshTokenService, HttpContext httpContext, CancellationToken ct = default)
-    {
-        var email = request.Email.Trim().ToLowerInvariant();
-
-        var user = await userManager.FindByEmailAsync(email);
-        if (user is null)
-            return Results.Unauthorized();
-
-        if (await userManager.IsLockedOutAsync(user))
-            return Results.Problem(title: "Locked out", detail: "User is remporary locked out", statusCode: StatusCodes.Status423Locked);
-
-        var passwordValid = await userManager.CheckPasswordAsync(user, request.Password);
-        if (!passwordValid)
+        private static async Task<IResult> Login(LoginAuthRequest request, UserManager<AppUser> userManager, JwtTokenService jwtTokenService, RefreshTokenService refreshTokenService, HttpContext httpContext, CancellationToken ct = default)
         {
-            await userManager.AccessFailedAsync(user);
-            return Results.Unauthorized();
+            var email = request.Email.Trim().ToLowerInvariant();
+
+            var user = await userManager.FindByEmailAsync(email);
+            if (user is null)
+                return Results.Unauthorized();
+
+            if (await userManager.IsLockedOutAsync(user))
+                return Results.Problem(title: "Locked out", detail: "User is remporary locked out", statusCode: StatusCodes.Status423Locked);
+
+            var passwordValid = await userManager.CheckPasswordAsync(user, request.Password);
+            if (!passwordValid)
+            {
+                await userManager.AccessFailedAsync(user);
+                return Results.Unauthorized();
+            }
+
+            await userManager.ResetAccessFailedCountAsync(user);
+
+            var roles = await userManager.GetRolesAsync(user);
+            var accessToken = jwtTokenService.CreateAccessToken(user, roles);
+            var refreshToken = await refreshTokenService.CreateAsync(user.Id, httpContext.Connection.RemoteIpAddress?.ToString(), ct);
+
+            //här kan det vara cleanare att ha en ResultDto
+            return Results.Ok(new
+            {
+                accessToken = accessToken.AccessToken,
+                accessToken.TokenType,
+                accessToken.ExpiresIn,
+                accessToken.ExpiresAtUtc,
+                refreshToken,
+                user = new
+                {
+                    userId = user.Id,
+                    email = user.Email,
+                    roles
+                }
+            });
+
+
         }
 
-        await userManager.ResetAccessFailedCountAsync(user);
 
-        var roles = await userManager.GetRolesAsync(user);
-        var accessToken = jwtTokenService.CreateAccessToken(user, roles);
-        var refreshToken = await refreshTokenService.CreateAsync(user.Id, httpContext.Connection.RemoteIpAddress?.ToString(), ct);
 
-        //här kan det vara cleanare att ha en ResultDto
-        return Results.Ok(new
+
+
+
+        private static async Task<IResult> Refresh(RefreshAuthRequest request, UserManager<AppUser> userManager, JwtTokenService jwtTokenService, RefreshTokenService refreshTokenService, HttpContext httpContext, CancellationToken ct = default)
         {
-            accessToken = accessToken.AccessToken,
-            accessToken.TokenType,
-            accessToken.ExpiresIn,
-            accessToken.ExpiresAtUtc,
-            refreshToken,
-            user = new
+            var result = await refreshTokenService.RotateAsync(request.RefreshToken, httpContext.Connection.RemoteIpAddress?.ToString(), ct);
+            if (!result.Succeeded || string.IsNullOrWhiteSpace(result.UserId))
+                return Results.Unauthorized();
+
+            var user = await userManager.FindByIdAsync(result.UserId);
+            if (user is null) return Results.Unauthorized();
+
+            var roles = await userManager.GetRolesAsync(user);
+            var accessToken = jwtTokenService.CreateAccessToken(user, roles);
+
+            return Results.Ok(new
             {
-                userId = user.Id,
-                email = user.Email,
-                roles
-            }
-        });
+                accessToken = accessToken.AccessToken,
+                accessToken.TokenType,
+                accessToken.ExpiresIn,
+                accessToken.ExpiresAtUtc,
+                refreshToken = result.NewRefreshToken,
+                user = new
+                {
+                    userId = user.Id,
+                    email = user.Email,
+                    roles
+                }
+            });
+        }
 
 
-    }
 
 
-
-
-
-
-    private static async Task<IResult> Refresh(RefreshAuthRequest request, UserManager<AppUser> userManager, JwtTokenService jwtTokenService, RefreshTokenService refreshTokenService, HttpContext httpContext, CancellationToken ct = default)
-    {
-        var result = await refreshTokenService.RotateAsync(request.RefreshToken, httpContext.Connection.RemoteIpAddress?.ToString(), ct);
-        if (!result.Succeeded || string.IsNullOrWhiteSpace(result.UserId))
-            return Results.Unauthorized();
-
-        var user = await userManager.FindByIdAsync(result.UserId);
-        if (user is null) return Results.Unauthorized();
-
-        var roles = await userManager.GetRolesAsync(user);
-        var accessToken = jwtTokenService.CreateAccessToken(user, roles);
-
-        return Results.Ok(new
+        private static async Task<IResult> Logout(LogoutAuthRequest request, RefreshTokenService refreshTokenService, HttpContext httpContext, CancellationToken ct = default)
         {
-            accessToken = accessToken.AccessToken,
-            accessToken.TokenType,
-            accessToken.ExpiresIn,
-            accessToken.ExpiresAtUtc,
-            refreshToken = result.NewRefreshToken,
-            user = new
+            await refreshTokenService.RevokeAsync(request.RefreshToken, httpContext.Connection.RemoteIpAddress?.ToString(), ct);
+            return Results.NoContent();
+        }
+
+
+
+
+
+
+        [Authorize]
+        private static async Task<IResult> Me(HttpContext httpContext, UserManager<AppUser> userManager, CancellationToken ct = default)
+        {
+
+            var userId = httpContext.User.FindFirst(JwtClaimTypes.UserId)?.Value;
+            var email = httpContext.User.FindFirst(JwtClaimTypes.Email)?.Value;
+            var roles = httpContext.User.FindAll(JwtClaimTypes.Role).Select(x => x.Value).ToArray();
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return Results.Unauthorized();
+
+            var user = await userManager.FindByIdAsync(userId);
+            if (user is null)
+                return Results.Unauthorized();
+
+            return Results.Ok(new
             {
-                userId = user.Id,
-                email = user.Email,
+                user.Id,
+                user.Email,
+                user.PhoneNumber,
                 roles
-            }
-        });
-    }
-
-
-
-
-    private static async Task<IResult> Logout(LogoutAuthRequest request, RefreshTokenService refreshTokenService, HttpContext httpContext, CancellationToken ct = default)
-    {
-        await refreshTokenService.RevokeAsync(request.RefreshToken, httpContext.Connection.RemoteIpAddress?.ToString(), ct);
-        return Results.NoContent();
-    }
-
-
-
-
-
-
-    [Authorize]
-    private static async Task<IResult> Me(HttpContext httpContext, UserManager<AppUser> userManager, CancellationToken ct = default)
-    {
-
-        var userId = httpContext.User.FindFirst(JwtClaimTypes.UserId)?.Value;
-        var email = httpContext.User.FindFirst(JwtClaimTypes.Email)?.Value;
-        var roles = httpContext.User.FindAll(JwtClaimTypes.Role).Select(x => x.Value).ToArray();
-
-        if (string.IsNullOrWhiteSpace(userId))
-            return Results.Unauthorized();
-
-        var user = await userManager.FindByIdAsync(userId);
-        if (user is null)
-            return Results.Unauthorized();
-
-        return Results.Ok(new
-        {
-            user.Id,
-            user.Email,
-            user.PhoneNumber,
-            roles
-        });
+            });
 
     }
 
