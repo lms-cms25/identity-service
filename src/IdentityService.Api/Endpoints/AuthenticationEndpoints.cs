@@ -1,4 +1,5 @@
-﻿using IdentityService.Api.Dto;
+﻿using IdentityService.Api.Abstractions;
+using IdentityService.Api.Dto;
 using IdentityService.Api.Identity;
 using IdentityService.Api.Security;
 using IdentityService.Api.Services;
@@ -12,7 +13,10 @@ public static class AuthenticationEndpoints
     public static void MapAuthenticationEndpoints(this WebApplication app)
     {
         var group = app.MapGroup("/api/auth");
- 
+
+
+        group.MapPost("/check", Check);
+        group.MapPost("/verify", Verify);
         group.MapPost("/login", Login);
         group.MapPost("/refresh", Refresh);
         group.MapPost("/logout", Logout);
@@ -23,7 +27,32 @@ public static class AuthenticationEndpoints
 
 
 
+    private static async Task<IResult> Check(CheckUserStatusRequest request, IAuthService authService, CancellationToken ct = default)
+    {
+        CheckUserStatusResult result = await authService.CheckUserStatusAsync(request.Email, ct);
 
+        if (!result.Succeeded && !result.IsVerified)
+            return Results.NotFound(result);
+
+        if (result.Succeeded && !result.IsVerified)
+            return Results.BadRequest(result);
+
+        return Results.Ok(result);
+    }
+
+
+    private static async Task<IResult> Verify(VerifyEmailVerificationCodeRequest request, IAuthService authService, CancellationToken ct = default)
+    {
+        var result = await authService.VerifyVerificationCodeAsync(request, ct);
+
+        if (!result.Succeeded && string.IsNullOrWhiteSpace(result.Email))
+            return Results.NotFound(result);
+
+        if (result.Succeeded)
+            return Results.BadRequest(result);
+
+        return Results.Ok(result);
+    }
 
 
 
@@ -146,4 +175,7 @@ public static class AuthenticationEndpoints
         });
 
     }
+
+
+
 }
