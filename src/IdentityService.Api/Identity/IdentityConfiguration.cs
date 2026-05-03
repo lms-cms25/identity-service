@@ -1,4 +1,6 @@
-﻿using IdentityService.Api.Data;
+﻿using Azure.Messaging.ServiceBus;
+using IdentityService.Api.Abstractions;
+using IdentityService.Api.Data;
 using IdentityService.Api.Security;
 using IdentityService.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -12,6 +14,14 @@ public static class IdentityConfiguration
     public static IServiceCollection AddIdentityConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddOptions<JwtOptions>().Bind(configuration.GetSection(JwtOptions.SectionName));
+        services.AddSingleton(_ =>
+        {
+            var connectionString = configuration.GetConnectionString("AzureServiceBus");
+            return new ServiceBusClient(connectionString);
+        });
+
+        services.AddDataProtection(); //eftersom .AddDefaultTokenProviders(); använder denna.
+
 
         var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
             ?? throw new InvalidOperationException("JWT Configuration is missing");
@@ -60,6 +70,8 @@ public static class IdentityConfiguration
         services.AddScoped<JwtTokenService>();
         services.AddScoped<RefreshTokenService>();
         services.AddScoped<RefreshTokenHasher>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<IVerificationService, VerificationService>();
 
         return services;
     }

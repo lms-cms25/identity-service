@@ -1,3 +1,4 @@
+using Azure.Messaging.ServiceBus;
 using IdentityService.Api.Data;
 using IdentityService.Api.Endpoints;
 using IdentityService.Api.Identity;
@@ -12,9 +13,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddCorsConfiguration(builder.Configuration);
 
-
+builder.Services.AddHttpClient();
 builder.Services.AddDataConfiguration(builder.Configuration);
 builder.Services.AddIdentityConfiguration(builder.Configuration);
+
+//lägg till AzureServiceBus
 
 var app = builder.Build();
 
