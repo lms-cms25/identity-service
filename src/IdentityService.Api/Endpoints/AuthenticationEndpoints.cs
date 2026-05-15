@@ -1,29 +1,58 @@
-﻿    using IdentityService.Api.Dto;
-    using IdentityService.Api.Identity;
-    using IdentityService.Api.Security;
-    using IdentityService.Api.Services;
-    using Microsoft.AspNetCore.Authorization;
-    using Microsoft.AspNetCore.Identity;
+﻿using IdentityService.Api.Abstractions;
+using IdentityService.Api.Dto;
+using IdentityService.Api.Identity;
+using IdentityService.Api.Security;
+using IdentityService.Api.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 
     namespace IdentityService.Api.Endpoints;
 
-    public static class AuthenticationEndpoints
+public static class AuthenticationEndpoints
+{
+    public static void MapAuthenticationEndpoints(this WebApplication app)
     {
-        public static void MapAuthenticationEndpoints(this WebApplication app)
-        {
-            var group = app.MapGroup("/api/auth");
- 
-            group.MapPost("/login", Login);
-            group.MapPost("/refresh", Refresh);
-            group.MapPost("/logout", Logout);
-            group.MapGet("/me", Me).RequireAuthorization();
-
-        }
+        var group = app.MapGroup("/api/auth");
 
 
+        group.MapPost("/check", Check);
+        group.MapPost("/verify", Verify);
+        group.MapPost("/login", Login);
+        group.MapPost("/refresh", Refresh);
+        group.MapPost("/logout", Logout);
+        group.MapGet("/me", Me).RequireAuthorization();
+
+    }
 
 
 
+
+    private static async Task<IResult> Check(CheckUserStatusRequest request, IAuthService authService, CancellationToken ct = default)
+    {
+        CheckUserStatusResult result = await authService.CheckUserStatusAsync(request.Email, ct);
+
+        if (!result.Succeeded && !result.IsVerified)
+            return Results.NotFound(result);
+
+        if (result.Succeeded && !result.IsVerified)
+            return Results.BadRequest(result);
+
+        return Results.Ok(result);
+    }
+
+
+    private static async Task<IResult> Verify(VerifyEmailVerificationCodeRequest request, IAuthService authService, CancellationToken ct = default)
+    {
+        var result = await authService.VerifyVerificationCodeAsync(request, ct);
+
+        if (!result.Succeeded && string.IsNullOrWhiteSpace(result.Email))
+            return Results.NotFound(result);
+
+        if (result.Succeeded)
+            return Results.BadRequest(result);
+
+        return Results.Ok(result);
+    }
 
 
 
@@ -145,5 +174,8 @@
                 roles
             });
 
-        }
     }
+
+
+
+}
