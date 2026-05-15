@@ -49,5 +49,7 @@ app.MapAccountAdministrationEndpoints();
 //    return Results.Ok(user.Claims.Select(c => new { c.Type, c.Value }));
 //}).RequireAuthorization();
 
+await IdentitySeeder.SeedAsync(app.Services);
+
 app.Run();
 

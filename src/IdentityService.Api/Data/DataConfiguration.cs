@@ -6,7 +6,7 @@ public static class DataConfiguration
 {
     public static IServiceCollection AddDataConfiguration(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<DataContext>(options => options.UseSqlServer(configuration.GetConnectionString("SqlConnection")));
+        services.AddDbContext<DataContext>(options => options.UseSqlServer(configuration.GetConnectionString("DefaultConnection")));
 
         return services;
     }
