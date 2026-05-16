@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Api.Dto;
+﻿namespace IdentityService.Api.Dtos
 
 public record VerifyEmailVerificationCodeResult(bool Succeeded, string? Email = null, string? Error = null)
 {
