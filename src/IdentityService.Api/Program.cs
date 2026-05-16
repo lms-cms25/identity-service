@@ -1,10 +1,9 @@
-using Azure.Messaging.ServiceBus;
 using IdentityService.Api.Data;
 using IdentityService.Api.Endpoints;
 using IdentityService.Api.Identity;
 using IdentityService.Api.Security;
 using Scalar.AspNetCore;
-using System.Security.Claims;
+
 
 
 var builder = WebApplication.CreateBuilder(args);
