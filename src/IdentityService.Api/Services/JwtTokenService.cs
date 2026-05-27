@@ -1,4 +1,4 @@
-﻿using IdentityService.Api.Dto;
+﻿using IdentityService.Api.Dtos.Results;
 using IdentityService.Api.Identity;
 using IdentityService.Api.Security;
 using Microsoft.AspNetCore.Authentication.BearerToken;
