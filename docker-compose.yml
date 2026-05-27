@@ -1,0 +1,89 @@
+services:
+  identityservice:
+    build:
+      context: .
+      dockerfile: src/IdentityService.Api/Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=sqlserver;Database=IdentityDb;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True
+      - Jwt__SigningKey=${JWT_SIGNING_KEY}
+      - Jwt__Issuer=identityservice
+      - Jwt__Audience=identityservice-client
+      - Services__VerificationApi=http://verificationapi:8080/
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - backend
+
+  verificationapi:
+    build:
+      context: ../apis/verification-api
+      dockerfile: src/Verification.Api/Dockerfile
+    ports:
+      - "6002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ServiceBus__ConnectionString=${SERVICEBUS_CONNECTION}
+      - ServiceBus:ConnectionString=${SERVICEBUS_CONNECTION}
+      - EmailQueueName=email-queue
+      - AzureServiceBus__EmailQueueName=email-queue
+      - AzureServiceBus:EmailQueueName=email-queue
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - backend
+
+  emailservice:
+    build:
+      context: ../services/email-service
+      dockerfile: src/EmailService.Functions/Dockerfile
+    # Vi laddar in din .env-fil här så att ${AzureCommunicationServices} osv kan läsas korrekt
+    env_file:
+      - .env
+    environment:
+      - AzureServiceBus=${SERVICEBUS_CONNECTION}
+      - EmailQueueName=email-queue
+      - AzureCommunicationServices=${AzureCommunicationServices}
+      - SenderAddress=${SenderAddress}
+      - FUNCTIONS_WORKER_RUNTIME=dotnet-isolated
+      # ÄNDRING HÄR: Vi pekar anslutningssträngen direkt mot azurite-containern istället för "UseDevelopmentStorage"
+      - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;
+    depends_on:
+      - azurite
+    networks:
+      - backend
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: azurite
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    networks:
+      - backend
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: sqlserver
+    environment:
+      - ACCEPT_EULA=Y
+      - SA_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "1433:1433"
+    networks:
+      - backend
+    healthcheck:
+      # Fixade till syntaxen för healthcheck på sqlserver så den fungerar på Linux-containrar
+      test: ["CMD", "/opt/mssql-tools18/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "${DB_PASSWORD}", "-Q", "SELECT 1", "-C"]
+      interval: 20s
+      timeout: 20s
+      retries: 20       # Ger databasen massor av försök att svara
+      start_period: 60s
+
+networks:
+  backend:
