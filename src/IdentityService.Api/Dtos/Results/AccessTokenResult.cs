@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Api.Dtos;
+﻿namespace IdentityService.Api.Dtos.Results;
 
 
 public sealed record AccessTokenResult
