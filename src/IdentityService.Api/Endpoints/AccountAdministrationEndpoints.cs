@@ -1,5 +1,5 @@
 ﻿using IdentityService.Api.Data;
-using IdentityService.Api.Dto;
+using IdentityService.Api.Dtos.Requests;
 using IdentityService.Api.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +30,7 @@ public static class AccountAdministrationEndpoints
         {
             UserName = email,
             Email = email,
+            EmailConfirmed = false
         };
         string normalizedRole = char.ToUpper(request.RoleName[0]) + request.RoleName.Substring(1).ToLower();
 
@@ -40,7 +41,7 @@ public static class AccountAdministrationEndpoints
             await roleManager.CreateAsync(newRole);
         }
 
-        var result = await userManager.CreateAsync(user, request.Password);
+        var result = await userManager.CreateAsync(user);
 
         if (!result.Succeeded)
             return Results.ValidationProblem(result.Errors.ToDictionary(x => x.Code, x => new[] { x.Description }));
