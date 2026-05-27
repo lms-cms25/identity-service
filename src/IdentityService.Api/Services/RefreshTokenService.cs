@@ -1,5 +1,5 @@
 ﻿using IdentityService.Api.Data;
-using IdentityService.Api.Dto;
+using IdentityService.Api.Dtos.Results;
 using IdentityService.Api.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
