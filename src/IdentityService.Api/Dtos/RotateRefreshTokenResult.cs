@@ -1,4 +1,4 @@
-﻿namespace IdentityService.Api.Dto;
+﻿namespace IdentityService.Api.Dtos;
 
 public sealed record RotateRefreshTokenResult(bool Succeeded, string? UserId, string? NewRefreshToken)
 {

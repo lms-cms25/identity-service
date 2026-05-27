@@ -1,3 +1,3 @@
-﻿namespace IdentityService.Api.Dto;
+﻿namespace IdentityService.Api.Dtos;
 
 public record VerifyEmailVerificationCodeRequest(string Email, string Code);
