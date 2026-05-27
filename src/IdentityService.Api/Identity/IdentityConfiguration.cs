@@ -49,9 +49,9 @@ public static class IdentityConfiguration
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
-                ValidIssuer = jwtOptions.Issuer,
+                ValidIssuers = [jwtOptions.Issuer],
                 ValidateAudience = true,
-                ValidAudience = jwtOptions.Audience,
+                ValidAudiences = [jwtOptions.Audience],
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = jwtOptions.GetSigningKey(),
                 ValidateLifetime = true,
@@ -70,8 +70,8 @@ public static class IdentityConfiguration
         services.AddScoped<JwtTokenService>();
         services.AddScoped<RefreshTokenService>();
         services.AddScoped<RefreshTokenHasher>();
-        services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IVerificationService, VerificationService>();
+        services.AddScoped<IAuthService, AuthenticationService>();
+
 
         return services;
     }
