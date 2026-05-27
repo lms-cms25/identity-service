@@ -13,34 +13,44 @@ public static class IdentitySeeder
         var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
         var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
-        if (!await roleManager.RoleExistsAsync("Admin"))
-            await roleManager.CreateAsync(new IdentityRole("Admin"));
+        var retry = 10;
 
-        if (userManager.Users.Any())
-            return;
-
-        var email = config["Admin:Email"];
-        var password = config["Admin:Password"];
-
-        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
-            throw new Exception("Admin credentials are missing in configuration.");
-
-        var adminUser = new AppUser
+        while (retry-- > 0)
         {
-            UserName = email,
-            Email = email,
-            EmailConfirmed = true
-        };
+            try
+            {
+                if (!await roleManager.RoleExistsAsync("Admin"))
+                    await roleManager.CreateAsync(new IdentityRole("Admin"));
 
-        var result = await userManager.CreateAsync(adminUser, password);
+                if (userManager.Users.Any())
+                    return;
 
-        if (result.Succeeded)
-        {
-            await userManager.AddToRoleAsync(adminUser, "Admin");
+                var email = config["Admin:Email"];
+                var password = config["Admin:Password"];
+
+                if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+                    throw new Exception("Admin credentials are missing in configuration.");
+
+                var adminUser = new AppUser
+                {
+                    UserName = email,
+                    Email = email,
+                    EmailConfirmed = true
+                };
+
+                var result = await userManager.CreateAsync(adminUser, password);
+
+                if (result.Succeeded)
+                    await userManager.AddToRoleAsync(adminUser, "Admin");
+
+                return;
+            }
+            catch
+            {
+                await Task.Delay(3000);
+            }
         }
-        else
-        {
-            throw new Exception("Failed to create initial admin user: " + string.Join(", ", result.Errors.Select(e => e.Description)));
-        }
+
+        throw new Exception("Seeder failed after retries (DB not ready)");
     }
 }
